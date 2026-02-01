@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交易计划提醒工具 - 智能版</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; }
+        body { background-color: #f5f7fa; color: #333; line-height: 1.6; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 25px; }
+        header { background: linear-gradient(135deg, #1a6dff 0%, #0d4dc2 100%); color: white; padding: 25px; border-radius: 12px; box-shadow: 0 6px 20px rgba(26, 109, 255, 0.2); }
+        h1 { font-size: 28px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+        h1 i { font-size: 32px; }
+        .subtitle { opacity: 0.9; font-size: 16px; }
+        .app-controls { display: flex; justify-content: flex-start; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .btn-primary { background: #1a6dff; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(26, 109, 255, 0.3); }
+        .btn-primary:hover { background: #0d5be6; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(26, 109, 255, 0.4); }
+        .btn-success { background: #4caf50; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3); }
+        .btn-success:hover { background: #43a047; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4); }
+        .btn-success:disabled { background: #cccccc; cursor: not-allowed; transform: none; box-shadow: none; }
+        .tabs { display: flex; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); }
+        .tab { padding: 15px 25px; cursor: pointer; font-weight: 600; transition: all 0.3s; text-align: center; flex: 1; }
+        .tab.active { background: #1a6dff; color: white; }
+        .tab:hover:not(.active) { background: #f0f7ff; }
+        .plans-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+        .plan-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 6px 15px rgba(0, 0, 0, 0.07); transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .plan-card:hover { transform: translateY(-5px); box-shadow: 0 12px 25px rgba(0, 0, 0, 0.1); }
+        .plan-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .stock-info { display: flex; flex-direction: column; }
+        .stock-name { font-size: 20px; font-weight: 700; color: #1a1a1a; }
+        .stock-code { color: #666; font-size: 14px; margin-top: 3px; }
+        .price-info { text-align: right; }
+        .current-price { font-size: 24px; font-weight: 700; }
+        .current-price.unavailable { color: #888; font-size: 18px; }
+        .price-update-time { font-size: 12px; color: #888; margin-top: 3px; }
+        .plan-status { padding: 6px 15px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-top: 10px; display: inline-block; }
+        .status-interested { background-color: #f3e5f5; color: #8e24aa; }
+        .status-in-progress { background-color: #fff8e1; color: #ff8f00; }
+        .status-completed { background-color: #e8f5e9; color: #43a047; }
+        .plan-content { padding: 20px; }
+        .signals-list { margin-top: 15px; }
+        .signal-item { padding: 12px 0; border-bottom: 1px dashed #eee; display: flex; justify-content: space-between; align-items: center; }
+        .signal-item:last-child { border-bottom: none; }
+        .signal-type { font-size: 14px; font-weight: 600; color: #1a6dff; }
+        .signal-desc { flex-grow: 1; margin-left: 15px; font-size: 14px; }
+        .signal-target { font-weight: 600; color: #333; }
+        .signal-tag { background-color: #e8f5e9; color: #2e7d32; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-left: 10px; }
+        .signal-tag.time { background-color: #e3f2fd; color: #1565c0; }
+        .signal-tag.price { background-color: #fff8e1; color: #ff8f00; }
+        .plan-actions { padding: 15px 20px; background-color: #f9fafc; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; border-top: 1px solid #eee; }
+        .btn-secondary { background: transparent; border: 1px solid #1a6dff; color: #1a6dff; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.3s; flex: 1; min-width: 120px; text-align: center; }
+        .btn-secondary:hover { background: #1a6dff; color: white; }
+        .btn-execute { background: transparent; border: 1px solid #ff9800; color: #ff9800; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.3s; flex: 1; min-width: 120px; text-align: center; }
+        .btn-execute:hover { background: #ff9800; color: white; }
+        .btn-sell { background: transparent; border: 1px solid #f44336; color: #f44336; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.3s; flex: 1; min-width: 120px; text-align: center; }
+        .btn-sell:hover { background: #f44336; color: white; }
+        .btn-history { background: transparent; border: 1px solid #673ab7; color: #673ab7; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.3s; flex: 1; min-width: 120px; text-align: center; }
+        .btn-history:hover { background: #673ab7; color: white; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background-color: white; width: 90%; max-width: 500px; border-radius: 12px; overflow: hidden; box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2); }
+        .modal-content.history-modal { max-width: 800px; max-height: 80vh; display: flex; flex-direction: column; }
+        .modal-header { background: linear-gradient(135deg, #1a6dff 0%, #0d4dc2 100%); color: white; padding: 20px; font-size: 20px; font-weight: 600; }
+        .modal-body { padding: 25px; max-height: 60vh; overflow-y: auto; flex-grow: 1; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #444; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; transition: border 0.3s; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #1a6dff; outline: none; }
+        .form-row { display: flex; gap: 15px; }
+        .form-row .form-group { flex: 1; }
+        .signal-inputs { border: 1px solid #eee; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .signal-inputs-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .btn-add-signal { background: #4caf50; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; }
+        .modal-footer { padding: 20px; background-color: #f9fafc; display: flex; justify-content: flex-end; gap: 15px; border-top: 1px solid #eee; }
+        .empty-state { grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: #888; }
+        .empty-state i { font-size: 60px; margin-bottom: 20px; color: #ccc; }
+        .empty-state h3 { font-size: 22px; margin-bottom: 10px; color: #666; }
+        footer { text-align: center; margin-top: 30px; color: #888; font-size: 14px; padding-top: 20px; border-top: 1px solid #eee; }
+        .update-info { display: flex; align-items: center; justify-content: space-between; background: #e8f5e9; padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; }
+        .update-info .time { font-size: 14px; color: #2e7d32; font-weight: 600; }
+        .notification { position: fixed; top: 20px; right: 20px; background: #4caf50; color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; font-weight: 600; animation: slideIn 0.3s ease; max-width: 350px; }
+        .notification.error { background: #f44336; }
+        .notification.warning { background: #ff9800; }
+        .history-timeline { margin-top: 20px; }
+        .timeline-item { padding: 15px; margin-bottom: 15px; border-left: 4px solid #1a6dff; background-color: #f9fafc; border-radius: 0 8px 8px 0; }
+        .timeline-item.interested { border-left-color: #8e24aa; }
+        .timeline-item.in-progress { border-left-color: #ff9800; }
+        .timeline-item.completed { border-left-color: #4caf50; }
+        .timeline-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .timeline-status { padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .timeline-status.interested { background-color: #f3e5f5; color: #8e24aa; }
+        .timeline-status.in-progress { background-color: #fff8e1; color: #ff8f00; }
+        .timeline-status.completed { background-color: #e8f5e9; color: #43a047; }
+        .timeline-time { font-size: 12px; color: #888; }
+        .timeline-price { font-weight: 600; color: #333; margin: 5px 0; }
+        .timeline-signals { margin-top: 10px; padding-left: 10px; }
+        .timeline-signal { padding: 5px 0; font-size: 14px; }
+        .timeline-signal.triggered { color: #4caf50; font-weight: 600; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+        
+        /* 调试面板样式 */
+        .debug-panel {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            z-index: 9999;
+            max-width: 400px;
+            display: none;
+            border: 1px solid #444;
+        }
+        .debug-toggle {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: #1a6dff;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 9999;
+            border: none;
+            font-weight: 600;
+        }
+        .debug-info {
+            margin: 5px 0;
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .debug-info strong {
+            color: #4caf50;
+            min-width: 100px;
+            display: inline-block;
+        }
+        .debug-url {
+            word-break: break-all;
+            font-size: 11px;
+            color: #bbbbbb;
+        }
+        
+        /* 数据源标记样式 */
+        .data-source-badge {
+            font-size: 10px;
+            padding: 1px 5px;
+            border-radius: 3px;
+            margin-left: 5px;
+            font-weight: 600;
+        }
+        .data-source-realtime {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .data-source-unavailable {
+            background: #ffebee;
+            color: #d32f2f;
+        }
+        .data-source-initial {
+            background: #f5f5f5;
+            color: #666;
+        }
+        
+        @media (max-width: 768px) { 
+            .plans-container { grid-template-columns: 1fr; } 
+            .app-controls { flex-direction: column; align-items: stretch; } 
+            .plan-actions { flex-direction: column; } 
+            .plan-actions button { width: 100%; }
+            .debug-panel {
+                max-width: 300px;
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-chart-line"></i> 交易计划提醒工具 - 智能版</h1>
+            <p class="subtitle">实时股价更新，支持价格与时间双提醒，智能交易计划管理</p>
+        </header>
+        
+        <div class="app-controls">
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-primary" id="addPlanBtn">
+                    <i class="fas fa-plus-circle"></i> 创建新交易计划
+                </button>
+                <button class="btn-success" id="updatePricesBtn">
+                    <i class="fas fa-cloud-download-alt"></i> 手动更新股价
+                </button>
+                <button class="btn-secondary" id="refreshBtn" style="background: #673ab7; border: none; color: white;">
+                    <i class="fas fa-sync-alt"></i> 刷新页面
+                </button>
+                <button class="btn-execute" id="testConnectionBtn" style="background: #ff9800; border: none; color: white;">
+                    <i class="fas fa-plug"></i> 测试连接
+                </button>
+            </div>
+        </div>
+        
+        <div class="update-info" id="updateInfo" style="display: none;">
+            <div>最后更新: <span id="lastUpdateTime">--</span> | 数据源: <span id="dataSource">未获取</span></div>
+            <div>状态: <span id="updateStatus">--</span> | 下次自动更新: <span id="nextUpdateTime">--</span></div>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" data-filter="interested">感兴趣 (<span id="interestedCount">0</span>)</div>
+            <div class="tab" data-filter="in-progress">进行中 (<span id="inProgressCount">0</span>)</div>
+            <div class="tab" data-filter="completed">已结束 (<span id="completedCount">0</span>)</div>
+        </div>
+        
+        <div class="plans-container" id="plansContainer">
+            <!-- 交易计划卡片将通过JS动态生成 -->
+        </div>
+        
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <i class="fas fa-clipboard-list"></i>
+            <h3>暂无交易计划</h3>
+            <p>点击上方的"创建新交易计划"按钮开始添加您的第一个交易计划</p>
+        </div>
+        
+        <footer>
+            <p>交易计划提醒工具 &copy; 2023 | 本工具仅为个人交易计划管理使用，不构成投资建议</p>
+            <p style="font-size: 12px; margin-top: 5px;">股票价格数据来源: 新浪财经API | 每天09:30, 12:00和15:00自动更新</p>
+            <p style="font-size: 11px; color: #666; margin-top: 3px;">
+                云函数状态: <span id="cloudFunctionStatus" style="color: #4caf50; font-weight: 600;">待测试</span> | 
+                数据获取方式: <span id="dataFetchMethod">未连接</span>
+            </p>
+        </footer>
+    </div>
+    
+    <!-- 添加/编辑交易计划模态框 -->
+    <div class="modal" id="planModal">
+        <div class="modal-content">
+            <div class="modal-header" id="modalHeader">
+                创建新交易计划
+            </div>
+            <div class="modal-body">
+                <form id="planForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="stockName">股票名称 *</label>
+                            <input type="text" id="stockName" required placeholder="例如: 贵州茅台">
+                        </div>
+                        <div class="form-group">
+                            <label for="stockCode">股票代码 *</label>
+                            <input type="text" id="stockCode" required placeholder="例如: 600519">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="currentPrice">当前价格 *</label>
+                        <input type="number" step="0.01" id="currentPrice" required placeholder="例如: 1650.80">
+                        <small style="color: #666; font-size: 12px;">创建后需要通过"更新股价"按钮获取实时价格</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>交易计划</label>
+                        <div id="signalsContainer">
+                            <!-- 计划输入区域将由JS动态生成 -->
+                        </div>
+                        <button type="button" class="btn-add-signal" id="addSignalBtn">
+                            <i class="fas fa-plus"></i> 添加计划
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="notes">备注</label>
+                        <textarea id="notes" rows="3" placeholder="可添加交易思路、止损止盈位等备注信息..."></textarea>
+                    </div>
+                    
+                    <input type="hidden" id="planId">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="cancelBtn">取消</button>
+                <button class="btn-primary" id="savePlanBtn">保存计划</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 交易记录模态框 -->
+    <div class="modal" id="historyModal">
+        <div class="modal-content history-modal">
+            <div class="modal-header" id="historyModalHeader">
+                交易记录
+            </div>
+            <div class="modal-body" id="historyModalBody">
+                <!-- 交易记录内容将通过JS动态生成 -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="closeHistoryBtn">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 调试面板 -->
+    <button class="debug-toggle" id="debugToggle">调试面板</button>
+    <div class="debug-panel" id="debugPanel">
+        <h4 style="margin: 0 0 10px 0; color: #4caf50; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 5px;">调试信息</h4>
+        <div class="debug-info">
+            <strong>云函数URL:</strong> 
+            <span class="debug-url" id="debugUrl">--</span>
+        </div>
+        <div class="debug-info">
+            <strong>最后请求:</strong> 
+            <span id="debugLastRequest">--</span>
+        </div>
+        <div class="debug-info">
+            <strong>响应状态:</strong> 
+            <span id="debugResponseStatus">--</span>
+        </div>
+        <div class="debug-info">
+            <strong>数据源:</strong> 
+            <span id="debugDataSource">--</span>
+        </div>
+        <div class="debug-info">
+            <strong>当前时间:</strong> 
+            <span id="debugCurrentTime">--</span>
+        </div>
+        <div class="debug-info">
+            <strong>下次更新:</strong> 
+            <span id="debugNextUpdate">--</span>
+        </div>
+        <div class="debug-info">
+            <strong>活动股票:</strong> 
+            <span id="debugActiveStocks">--</span>
+        </div>
+        <div style="margin-top: 10px; display: flex; gap: 10px;">
+            <button onclick="testCloudFunction()" style="padding: 5px 10px; background: #4caf50; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; flex: 1;">
+                <i class="fas fa-plug"></i> 测试连接
+            </button>
+            <button onclick="clearDebug()" style="padding: 5px 10px; background: #f44336; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; flex: 1;">
+                <i class="fas fa-trash"></i> 清除
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ================ 配置部分 ================
+        // 请替换为您自己的云函数URL
+        const CLOUD_FUNCTION_URL = 'https://1400356775-kmdwvqalgd.ap-guangzhou.tencentscf.com';
+        
+        // 自动更新时间点
+        const AUTO_UPDATE_TIMES = [
+            { hour: 9, minute: 30 },
+            { hour: 12, minute: 0 },
+            { hour: 15, minute: 0 }
+        ];
+
+        // ================ 核心数据与函数 ================
+        let tradingPlans = [];
+        let lastUpdateTimestamp = null;
+        let nextAutoUpdate = null;
+        let autoUpdateTimer = null;
+        let currentFilter = 'interested';
+        let isEditing = false;
+        let currentEditId = null;
+        let currentHistoryId = null;
+        let signalCount = 0;
+        let debugEnabled = false;
+        let cloudFunctionStatus = '未测试';
+
+        // DOM元素引用
+        const plansContainer = document.getElementById('plansContainer');
+        const emptyState = document.getElementById('emptyState');
+        const planModal = document.getElementById('planModal');
+        const historyModal = document.getElementById('historyModal');
+        const planForm = document.getElementById('planForm');
+        const modalHeader = document.getElementById('modalHeader');
+        const historyModalHeader = document.getElementById('historyModalHeader');
+        const historyModalBody = document.getElementById('historyModalBody');
+        const signalsContainer = document.getElementById('signalsContainer');
+        const tabs = document.querySelectorAll('.tab');
+        const updateInfo = document.getElementById('updateInfo');
+        const lastUpdateTime = document.getElementById('lastUpdateTime');
+        const updateStatus = document.getElementById('updateStatus');
+        const updatePricesBtn = document.getElementById('updatePricesBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const nextUpdateTime = document.getElementById('nextUpdateTime');
+        const dataSource = document.getElementById('dataSource');
+        const interestedCount = document.getElementById('interestedCount');
+        const inProgressCount = document.getElementById('inProgressCount');
+        const completedCount = document.getElementById('completedCount');
+        const cloudFunctionStatusSpan = document.getElementById('cloudFunctionStatus');
+        const dataFetchMethod = document.getElementById('dataFetchMethod');
+        const testConnectionBtn = document.getElementById('testConnectionBtn');
+
+        // ================ 初始化函数 ================
+        function initSampleData() {
+            const samplePlans = [
+                {
+                    id: 1,
+                    stockName: "万科A",
+                    stockCode: "000002",
+                    currentPrice: 0,
+                    priceAvailable: false,
+                    status: "interested",
+                    signals: [
+                        { type: "time", target: new Date(Date.now() + 86400000).toISOString().slice(0, 16), description: "提醒检查", triggered: false },
+                        { type: "price", target: 5.50, condition: ">", description: "目标价位", triggered: false }
+                    ],
+                    notes: "观察突破情况",
+                    createdAt: new Date(),
+                    lastUpdated: new Date(),
+                    dataSource: "initial",
+                    history: [
+                        {
+                            status: "interested",
+                            time: new Date(),
+                            price: 0,
+                            priceAvailable: false,
+                            action: "创建计划",
+                            signals: []
+                        }
+                    ]
+                }
+            ];
+            
+            if (!localStorage.getItem('tradingPlans')) {
+                tradingPlans = samplePlans;
+                savePlansToStorage();
+            }
+        }
+
+        function loadPlansFromStorage() {
+            const savedPlans = localStorage.getItem('tradingPlans');
+            if (savedPlans) {
+                try {
+                    tradingPlans = JSON.parse(savedPlans);
+                    tradingPlans.forEach(plan => {
+                        plan.createdAt = new Date(plan.createdAt);
+                        plan.lastUpdated = plan.lastUpdated ? new Date(plan.lastUpdated) : new Date();
+                        plan.priceAvailable = plan.priceAvailable !== undefined ? plan.priceAvailable : false;
+                        
+                        if (!plan.history) {
+                            plan.history = [
+                                {
+                                    status: plan.status,
+                                    time: plan.createdAt,
+                                    price: plan.currentPrice,
+                                    priceAvailable: plan.priceAvailable,
+                                    action: "创建计划",
+                                    signals: []
+                                }
+                            ];
+                        } else {
+                            plan.history.forEach(item => {
+                                item.time = new Date(item.time);
+                                item.priceAvailable = item.priceAvailable !== undefined ? item.priceAvailable : false;
+                            });
+                        }
+                    });
+                } catch (e) {
+                    console.error('加载数据失败:', e);
+                    initSampleData();
+                }
+            } else {
+                initSampleData();
+            }
+        }
+
+        function savePlansToStorage() {
+            localStorage.setItem('tradingPlans', JSON.stringify(tradingPlans));
+            updatePlanCounts();
+        }
+
+        function updatePlanCounts() {
+            const interested = tradingPlans.filter(p => p.status === 'interested').length;
+            const inProgress = tradingPlans.filter(p => p.status === 'in-progress').length;
+            const completed = tradingPlans.filter(p => p.status === 'completed').length;
+            
+            interestedCount.textContent = interested;
+            inProgressCount.textContent = inProgress;
+            completedCount.textContent = completed;
+        }
+
+        // ================ 工具函数 ================
+        function getActiveStockCodes() {
+            const activeCodes = [];
+            tradingPlans.forEach(plan => {
+                if (plan.status === 'interested' || plan.status === 'in-progress') {
+                    const code = plan.stockCode.toString().padStart(6, '0');
+                    if (!activeCodes.includes(code)) {
+                        activeCodes.push(code);
+                    }
+                }
+            });
+            return activeCodes;
+        }
+
+        function formatTime(date) {
+            if (!date) return "从未";
+            const now = new Date();
+            const diffMs = now - new Date(date);
+            const diffMins = Math.floor(diffMs / (1000 * 60));
+            
+            if (diffMins < 1) return "刚刚";
+            if (diffMins < 60) return `${diffMins}分钟前`;
+            
+            const diffHours = Math.floor(diffMins / 60);
+            if (diffHours < 24) return `${diffHours}小时前`;
+            
+            const diffDays = Math.floor(diffHours / 24);
+            if (diffDays < 30) return `${diffDays}天前`;
+            
+            const diffMonths = Math.floor(diffDays / 30);
+            return `${diffMonths}月前`;
+        }
+
+        function formatDateTime(date) {
+            if (!date) return "";
+            const d = new Date(date);
+            return `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+        }
+
+        function showNotification(message, isError = false, isWarning = false) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${isError ? 'error' : isWarning ? 'warning' : ''}`;
+            notification.innerHTML = `<i class="fas fa-${isError ? 'exclamation-circle' : isWarning ? 'exclamation-triangle' : 'check-circle'}"></i> ${message}`;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        document.body.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // ================ 股价更新核心功能 ================
+        async function updateRealStockPrices() {
+            const activeCodes = getActiveStockCodes();
+            
+            if (activeCodes.length === 0) {
+                showNotification('没有需要更新的股票', true);
+                return 0;
+            }
+            
+            // 更新按钮状态
+            const originalText = updatePricesBtn.innerHTML;
+            updatePricesBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 更新中...';
+            updatePricesBtn.disabled = true;
+            updateStatus.textContent = '更新中...';
+            dataSource.textContent = '请求中...';
+            
+            // 更新调试信息
+            updateDebugInfo();
+            
+            try {
+                console.log('开始更新股价，股票代码:', activeCodes);
+                console.log('调用云函数URL:', CLOUD_FUNCTION_URL);
+                
+                // 尝试使用主云函数
+                let result;
+                let response;
+                try {
+                    response = await fetch(CLOUD_FUNCTION_URL, {
+                        method: 'POST',
+                        mode: 'cors',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            codes: activeCodes,
+                            timestamp: Date.now()
+                        })
+                    });
+                    
+                    console.log('响应状态码:', response.status);
+                    console.log('响应状态:', response.statusText);
+                    
+                    // 更新调试信息
+                    if (debugEnabled) {
+                        document.getElementById('debugResponseStatus').textContent = 
+                            `HTTP ${response.status}: ${response.statusText}`;
+                    }
+                    
+                    if (!response.ok) {
+                        throw new Error(`云函数请求失败: ${response.status} ${response.statusText}`);
+                    }
+                    
+                    // 检查响应类型
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        const text = await response.text();
+                        console.error('非JSON响应:', text.substring(0, 200));
+                        throw new Error(`服务器返回非JSON格式: ${contentType}`);
+                    }
+                    
+                    result = await response.json();
+                    console.log('云函数返回结果:', result);
+                    
+                    if (result.success) {
+                        dataSource.textContent = '新浪实时';
+                        cloudFunctionStatus = '正常';
+                        cloudFunctionStatusSpan.textContent = cloudFunctionStatus;
+                        cloudFunctionStatusSpan.style.color = '#4caf50';
+                        dataFetchMethod.textContent = '新浪实时数据';
+                    } else {
+                        dataSource.textContent = '获取失败';
+                        cloudFunctionStatus = 'API失败';
+                        cloudFunctionStatusSpan.textContent = cloudFunctionStatus;
+                        cloudFunctionStatusSpan.style.color = '#ff9800';
+                        dataFetchMethod.textContent = '数据获取失败';
+                    }
+                    
+                } catch (cloudError) {
+                    console.warn('云函数连接失败:', cloudError.message);
+                    
+                    // 更新调试信息
+                    if (debugEnabled) {
+                        document.getElementById('debugResponseStatus').textContent = `错误: ${cloudError.message}`;
+                    }
+                    
+                    // 如果云函数URL错误，检查URL是否正确
+                    if (cloudError.message.includes('Failed to fetch')) {
+                        console.error('无法连接到云函数，请检查URL:', CLOUD_FUNCTION_URL);
+                        showNotification('无法连接到云函数服务器，请检查网络或URL配置', true);
+                        cloudFunctionStatus = '连接失败';
+                        cloudFunctionStatusSpan.textContent = cloudFunctionStatus;
+                        cloudFunctionStatusSpan.style.color = '#f44336';
+                    }
+                    
+                    dataSource.textContent = '连接失败';
+                    dataFetchMethod.textContent = '云函数连接失败';
+                    
+                    // 返回空结果
+                    result = {
+                        success: false,
+                        message: '云函数连接失败',
+                        data: []
+                    };
+                }
+                
+                // 更新数据
+                let updatedCount = 0;
+                let realDataCount = 0;
+                
+                if (result.success && result.data && Array.isArray(result.data)) {
+                    // 处理真实数据
+                    result.data.forEach(stock => {
+                        tradingPlans.forEach(plan => {
+                            const planCode = plan.stockCode.toString().padStart(6, '0');
+                            const stockCode = stock.code.toString().padStart(6, '0');
+                            
+                            if (planCode === stockCode && 
+                                (plan.status === 'interested' || plan.status === 'in-progress')) {
+                                const oldPrice = plan.currentPrice;
+                                const oldPriceAvailable = plan.priceAvailable;
+                                
+                                plan.currentPrice = stock.price || stock.currentPrice;
+                                plan.priceAvailable = true;
+                                plan.lastUpdated = new Date();
+                                plan.dataSource = 'realtime';
+                                updatedCount++;
+                                realDataCount++;
+                                
+                                // 只有在价格有效时才检查信号
+                                if (oldPriceAvailable) {
+                                    checkPriceSignals(plan, oldPrice, plan.currentPrice);
+                                }
+                            }
+                        });
+                    });
+                    
+                    // 标记未获取到数据的股票
+                    tradingPlans.forEach(plan => {
+                        if ((plan.status === 'interested' || plan.status === 'in-progress') && 
+                            plan.dataSource !== 'realtime') {
+                            plan.priceAvailable = false;
+                            plan.dataSource = 'unavailable';
+                            plan.lastUpdated = new Date();
+                        }
+                    });
+                } else {
+                    // 云函数失败，标记所有股票为未获取
+                    tradingPlans.forEach(plan => {
+                        if (plan.status === 'interested' || plan.status === 'in-progress') {
+                            plan.priceAvailable = false;
+                            plan.dataSource = 'unavailable';
+                            plan.lastUpdated = new Date();
+                        }
+                    });
+                }
+                
+                // 检查时间信号
+                checkTimeSignals();
+                
+                // 保存并更新UI
+                lastUpdateTimestamp = new Date();
+                savePlansToStorage();
+                renderPlans();
+                updateLastUpdateTime();
+                updateDebugInfo();
+                
+                if (realDataCount > 0) {
+                    updateStatus.textContent = `已更新 ${realDataCount} 只股票实时数据`;
+                    showNotification(`成功获取 ${realDataCount} 只股票实时价格`, false);
+                } else if (result.success) {
+                    updateStatus.textContent = '未获取到实时数据';
+                    showNotification('未获取到股票实时数据，请稍后重试', true);
+                } else {
+                    updateStatus.textContent = '数据获取失败';
+                    showNotification('股票数据获取失败，请检查网络连接', true);
+                }
+                
+                return realDataCount;
+                
+            } catch (error) {
+                console.error('更新股价失败:', error);
+                updateStatus.textContent = '更新失败';
+                dataSource.textContent = '更新失败';
+                cloudFunctionStatus = '更新失败';
+                cloudFunctionStatusSpan.textContent = cloudFunctionStatus;
+                cloudFunctionStatusSpan.style.color = '#f44336';
+                dataFetchMethod.textContent = '更新失败';
+                
+                // 标记所有股票为未获取
+                tradingPlans.forEach(plan => {
+                    if (plan.status === 'interested' || plan.status === 'in-progress') {
+                        plan.priceAvailable = false;
+                        plan.dataSource = 'unavailable';
+                        plan.lastUpdated = new Date();
+                    }
+                });
+                
+                savePlansToStorage();
+                renderPlans();
+                updateLastUpdateTime();
+                
+                showNotification('股价更新失败', true);
+                
+                return 0;
+            } finally {
+                updatePricesBtn.innerHTML = originalText;
+                updatePricesBtn.disabled = false;
+                updateDebugInfo();
+            }
+        }
+
+        // ================ 信号检查功能 ================
+        function checkPriceSignals(plan, oldPrice, newPrice) {
+            const triggeredSignals = [];
+            
+            plan.signals.forEach(signal => {
+                if (signal.type === 'price' && !signal.triggered) {
+                    const target = parseFloat(signal.target);
+                    const condition = signal.condition;
+                    
+                    let shouldTrigger = false;
+                    
+                    if (condition === '>') {
+                        shouldTrigger = oldPrice <= target && newPrice > target;
+                    } else if (condition === '<') {
+                        shouldTrigger = oldPrice >= target && newPrice < target;
+                    } else if (condition === '>=') {
+                        shouldTrigger = oldPrice < target && newPrice >= target;
+                    } else if (condition === '<=') {
+                        shouldTrigger = oldPrice > target && newPrice <= target;
+                    }
+                    
+                    if (shouldTrigger) {
+                        signal.triggered = true;
+                        triggeredSignals.push(`${signal.description} (${condition}${target})`);
+                        showNotification(`🚨 ${plan.stockName}(${plan.stockCode}) 触发价格提醒：${signal.description}`, false, true);
+                    }
+                }
+            });
+            
+            // 记录触发历史
+            if (triggeredSignals.length > 0) {
+                if (!plan.history) plan.history = [];
+                plan.history.push({
+                    status: plan.status,
+                    time: new Date(),
+                    price: newPrice,
+                    priceAvailable: true,
+                    action: "价格提醒触发",
+                    signals: triggeredSignals
+                });
+            }
+        }
+
+        function checkTimeSignals() {
+            const now = new Date();
+            
+            tradingPlans.forEach(plan => {
+                const triggeredSignals = [];
+                
+                plan.signals.forEach(signal => {
+                    if (signal.type === 'time' && !signal.triggered) {
+                        const targetTime = new Date(signal.target);
+                        const diffMs = now - targetTime;
+                        const diffHours = diffMs / (1000 * 60 * 60);
+                        
+                        // 在当前时间之后1小时内触发
+                        if (diffMs >= 0 && diffHours <= 1) {
+                            signal.triggered = true;
+                            triggeredSignals.push(`${signal.description} (${formatDateTime(targetTime)})`);
+                            showNotification(`⏰ ${plan.stockName}(${plan.stockCode}) 时间提醒：${signal.description}`, false, true);
+                        }
+                    }
+                });
+                
+                // 记录触发历史
+                if (triggeredSignals.length > 0) {
+                    if (!plan.history) plan.history = [];
+                    plan.history.push({
+                        status: plan.status,
+                        time: new Date(),
+                        price: plan.currentPrice,
+                        priceAvailable: plan.priceAvailable,
+                        action: "时间提醒触发",
+                        signals: triggeredSignals
+                    });
+                }
+            });
+        }
+
+        // ================ 自动更新功能 ================
+        function updateLastUpdateTime() {
+            if (lastUpdateTimestamp) {
+                lastUpdateTime.textContent = `${formatTime(lastUpdateTimestamp)} (${formatDateTime(lastUpdateTimestamp)})`;
+            }
+            
+            if (tradingPlans.length > 0) {
+                updateInfo.style.display = 'flex';
+            }
+            
+            // 更新下次自动更新时间
+            if (nextAutoUpdate) {
+                const now = new Date();
+                const diffMs = nextAutoUpdate - now;
+                const diffMins = Math.floor(diffMs / (1000 * 60));
+                
+                if (diffMins > 0) {
+                    nextUpdateTime.textContent = `${diffMins}分钟后`;
+                } else {
+                    nextUpdateTime.textContent = '即将更新';
+                }
+            }
+        }
+
+        function calculateNextAutoUpdate() {
+            const now = new Date();
+            let nextUpdate = null;
+            
+            for (const time of AUTO_UPDATE_TIMES) {
+                const updateTime = new Date();
+                updateTime.setHours(time.hour, time.minute, 0, 0);
+                
+                if (updateTime > now) {
+                    nextUpdate = updateTime;
+                    break;
+                }
+            }
+            
+            if (!nextUpdate) {
+                const firstTime = AUTO_UPDATE_TIMES[0];
+                nextUpdate = new Date();
+                nextUpdate.setDate(nextUpdate.getDate() + 1);
+                nextUpdate.setHours(firstTime.hour, firstTime.minute, 0, 0);
+            }
+            
+            return nextUpdate;
+        }
+
+        function setupAutoUpdateTimer() {
+            if (autoUpdateTimer) {
+                clearTimeout(autoUpdateTimer);
+            }
+            
+            nextAutoUpdate = calculateNextAutoUpdate();
+            
+            const now = new Date();
+            const msUntilNextUpdate = nextAutoUpdate - now;
+            
+            autoUpdateTimer = setTimeout(async () => {
+                showNotification('自动更新：正在获取最新股价...', false);
+                try {
+                    await updateRealStockPrices();
+                    showNotification('自动更新：股价已更新完成！', false);
+                } catch (error) {
+                    console.error('自动更新失败:', error);
+                }
+                setupAutoUpdateTimer();
+            }, msUntilNextUpdate);
+            
+            console.log(`下一次自动更新: ${nextAutoUpdate.toLocaleTimeString()}`);
+        }
+
+        // ================ 渲染功能 ================
+        function renderPlans() {
+            plansContainer.innerHTML = '';
+            
+            updateLastUpdateTime();
+            updatePlanCounts();
+            
+            let filteredPlans = tradingPlans.filter(plan => plan.status === currentFilter);
+            filteredPlans.sort((a, b) => b.lastUpdated - a.lastUpdated);
+            
+            if (filteredPlans.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            }
+            
+            emptyState.style.display = 'none';
+            
+            filteredPlans.forEach(plan => {
+                const planCard = document.createElement('div');
+                planCard.className = 'plan-card';
+                
+                // 状态标签
+                let statusText = '';
+                let statusClass = '';
+                switch(plan.status) {
+                    case 'interested':
+                        statusText = '感兴趣';
+                        statusClass = 'status-interested';
+                        break;
+                    case 'in-progress':
+                        statusText = '进行中';
+                        statusClass = 'status-in-progress';
+                        break;
+                    case 'completed':
+                        statusText = '已结束';
+                        statusClass = 'status-completed';
+                        break;
+                }
+                
+                // 数据来源标记
+                let dataSourceText = '';
+                let dataSourceClass = '';
+                switch(plan.dataSource) {
+                    case 'realtime':
+                        dataSourceText = '实时';
+                        dataSourceClass = 'data-source-realtime';
+                        break;
+                    case 'unavailable':
+                        dataSourceText = '未获取';
+                        dataSourceClass = 'data-source-unavailable';
+                        break;
+                    case 'initial':
+                    default:
+                        dataSourceText = '初始';
+                        dataSourceClass = 'data-source-initial';
+                        break;
+                }
+                
+                const dataSourceBadge = `<span class="data-source-badge ${dataSourceClass}">${dataSourceText}</span>`;
+                
+                // 价格显示
+                let priceHTML = '';
+                if (plan.priceAvailable && plan.currentPrice > 0) {
+                    priceHTML = `
+                        <div class="current-price">¥${plan.currentPrice.toFixed(2)}</div>
+                        <div class="price-update-time">更新: ${formatTime(plan.lastUpdated)}</div>
+                    `;
+                } else {
+                    priceHTML = `
+                        <div class="current-price unavailable">未获取</div>
+                        <div class="price-update-time">最后尝试: ${formatTime(plan.lastUpdated)}</div>
+                    `;
+                }
+                
+                // 计划列表HTML
+                let signalsHTML = '';
+                plan.signals.forEach((signal, index) => {
+                    const signalTypeText = signal.type === 'time' ? '时间提醒' : '价格提醒';
+                    const signalTagClass = signal.type === 'time' ? 'time' : 'price';
+                    const triggeredClass = signal.triggered ? 'style="text-decoration: line-through; color: #888;"' : '';
+                    
+                    let targetDisplay = '';
+                    if (signal.type === 'time') {
+                        targetDisplay = formatDateTime(new Date(signal.target));
+                    } else {
+                        targetDisplay = `${signal.condition} ${signal.target}`;
+                    }
+                    
+                    signalsHTML += `
+                        <div class="signal-item">
+                            <div class="signal-type">${signalTypeText}</div>
+                            <div class="signal-desc" ${triggeredClass}>${signal.description}</div>
+                            <div class="signal-target">${targetDisplay}</div>
+                            <div class="signal-tag ${signalTagClass}">${signal.triggered ? '已触发' : '未触发'}</div>
+                        </div>
+                    `;
+                });
+                
+                planCard.innerHTML = `
+                    <div class="plan-header">
+                        <div class="stock-info">
+                            <div class="stock-name">${plan.stockName} ${dataSourceBadge}</div>
+                            <div class="stock-code">${plan.stockCode}</div>
+                            <span class="plan-status ${statusClass}">${statusText}</span>
+                        </div>
+                        <div class="price-info">
+                            ${priceHTML}
+                        </div>
+                    </div>
+                    <div class="plan-content">
+                        <div class="signals-list">
+                            ${signalsHTML}
+                        </div>
+                        ${plan.notes ? `<div style="margin-top: 15px; padding: 12px; background: #f9f9f9; border-radius: 6px; font-size: 14px;"><strong>备注:</strong> ${plan.notes}</div>` : ''}
+                    </div>
+                    <div class="plan-actions">
+                `;
+                
+                // 根据不同状态显示不同的操作按钮
+                if (plan.status === 'interested') {
+                    planCard.innerHTML += `
+                        <button class="btn-secondary edit-btn" data-id="${plan.id}">
+                            <i class="fas fa-edit"></i> 编辑
+                        </button>
+                        <button class="btn-execute execute-btn" data-id="${plan.id}">
+                            <i class="fas fa-play-circle"></i> 执行
+                        </button>
+                        <button class="btn-sell delete-btn" data-id="${plan.id}">
+                            <i class="fas fa-trash"></i> 删除
+                        </button>
+                    `;
+                } else if (plan.status === 'in-progress') {
+                    planCard.innerHTML += `
+                        <button class="btn-secondary edit-btn" data-id="${plan.id}">
+                            <i class="fas fa-edit"></i> 编辑
+                        </button>
+                        <button class="btn-sell sell-btn" data-id="${plan.id}">
+                            <i class="fas fa-money-bill-wave"></i> 卖出
+                        </button>
+                        <button class="btn-history history-btn" data-id="${plan.id}">
+                            <i class="fas fa-history"></i> 记录
+                        </button>
+                    `;
+                } else if (plan.status === 'completed') {
+                    planCard.innerHTML += `
+                        <button class="btn-history history-btn" data-id="${plan.id}">
+                            <i class="fas fa-history"></i> 交易记录
+                        </button>
+                        <button class="btn-sell delete-btn" data-id="${plan.id}">
+                            <i class="fas fa-trash"></i> 删除
+                        </button>
+                    `;
+                }
+                
+                planCard.innerHTML += `</div>`;
+                plansContainer.appendChild(planCard);
+            });
+            
+            // 添加事件监听器
+            attachEventListeners();
+        }
+
+        function attachEventListeners() {
+            document.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const planId = parseInt(e.currentTarget.getAttribute('data-id'));
+                    openEditModal(planId);
+                });
+            });
+            
+            document.querySelectorAll('.execute-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const planId = parseInt(e.currentTarget.getAttribute('data-id'));
+                    executePlan(planId);
+                });
+            });
+            
+            document.querySelectorAll('.sell-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const planId = parseInt(e.currentTarget.getAttribute('data-id'));
+                    if (e.currentTarget.textContent.includes('卖出')) {
+                        sellPlan(planId);
+                    } else {
+                        deletePlan(planId);
+                    }
+                });
+            });
+            
+            document.querySelectorAll('.history-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const planId = parseInt(e.currentTarget.getAttribute('data-id'));
+                    showHistoryModal(planId);
+                });
+            });
+            
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const planId = parseInt(e.currentTarget.getAttribute('data-id'));
+                    if (confirm('确定要删除这个交易计划吗？')) {
+                        deletePlan(planId);
+                    }
+                });
+            });
+        }
+
+        // ================ 计划操作函数 ================
+        function executePlan(planId) {
+            const plan = tradingPlans.find(p => p.id === planId);
+            if (!plan) return;
+            
+            plan.status = 'in-progress';
+            plan.lastUpdated = new Date();
+            
+            if (!plan.history) plan.history = [];
+            plan.history.push({
+                status: 'in-progress',
+                time: new Date(),
+                price: plan.currentPrice,
+                priceAvailable: plan.priceAvailable,
+                action: "开始执行",
+                signals: []
+            });
+            
+            savePlansToStorage();
+            renderPlans();
+            showNotification(`已将 ${plan.stockName} 开始执行`);
+        }
+
+        function sellPlan(planId) {
+            const plan = tradingPlans.find(p => p.id === planId);
+            if (!plan) return;
+            
+            plan.status = 'completed';
+            plan.lastUpdated = new Date();
+            
+            if (!plan.history) plan.history = [];
+            plan.history.push({
+                status: 'completed',
+                time: new Date(),
+                price: plan.currentPrice,
+                priceAvailable: plan.priceAvailable,
+                action: "卖出结束",
+                signals: []
+            });
+            
+            savePlansToStorage();
+            renderPlans();
+            showNotification(`已将 ${plan.stockName} 卖出结束`);
+        }
+
+        function deletePlan(planId) {
+            const planIndex = tradingPlans.findIndex(p => p.id === planId);
+            if (planIndex !== -1) {
+                const planName = tradingPlans[planIndex].stockName;
+                tradingPlans.splice(planIndex, 1);
+                savePlansToStorage();
+                renderPlans();
+                showNotification(`已删除 ${planName} 的交易计划`);
+            }
+        }
+
+        function showHistoryModal(planId) {
+            const plan = tradingPlans.find(p => p.id === planId);
+            if (!plan) return;
+            
+            currentHistoryId = planId;
+            historyModalHeader.textContent = `${plan.stockName}(${plan.stockCode}) 交易记录`;
+            
+            let historyHTML = '';
+            
+            if (plan.history && plan.history.length > 0) {
+                const sortedHistory = [...plan.history].sort((a, b) => a.time - b.time);
+                
+                sortedHistory.forEach((record, index) => {
+                    let statusText = '';
+                    let statusClass = '';
+                    switch(record.status) {
+                        case 'interested':
+                            statusText = '感兴趣';
+                            statusClass = 'interested';
+                            break;
+                        case 'in-progress':
+                            statusText = '进行中';
+                            statusClass = 'in-progress';
+                            break;
+                        case 'completed':
+                            statusText = '已结束';
+                            statusClass = 'completed';
+                            break;
+                    }
+                    
+                    const priceDisplay = record.priceAvailable ? `¥${record.price.toFixed(2)}` : '未获取';
+                    
+                    historyHTML += `
+                        <div class="timeline-item ${statusClass}">
+                            <div class="timeline-header">
+                                <div class="timeline-status ${statusClass}">${statusText}</div>
+                                <div class="timeline-time">${formatDateTime(record.time)}</div>
+                            </div>
+                            <div class="timeline-price">价格: ${priceDisplay}</div>
+                            <div style="margin: 5px 0; font-weight: 600;">${record.action}</div>
+                            ${record.signals && record.signals.length > 0 ? `
+                                <div class="timeline-signals">
+                                    ${record.signals.map(signal => `
+                                        <div class="timeline-signal triggered"><i class="fas fa-bell"></i> ${signal}</div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+            } else {
+                historyHTML = '<p style="text-align: center; color: #888;">暂无交易记录</p>';
+            }
+            
+            historyModalBody.innerHTML = `
+                <div class="history-timeline">
+                    ${historyHTML}
+                </div>
+            `;
+            
+            historyModal.style.display = 'flex';
+        }
+
+        // ================ 模态框相关函数 ================
+        function openAddModal() {
+            isEditing = false;
+            currentEditId = null;
+            modalHeader.textContent = '创建新交易计划';
+            planForm.reset();
+            signalsContainer.innerHTML = '';
+            signalCount = 0;
+            addSignalInput();
+            
+            // 设置默认时间为明天
+            const tomorrow = new Date(Date.now() + 86400000);
+            document.querySelector('.signal-target[type="datetime-local"]').value = 
+                tomorrow.toISOString().slice(0, 16);
+            
+            planModal.style.display = 'flex';
+            setTimeout(() => {
+                document.getElementById('stockName').focus();
+            }, 100);
+        }
+
+        function openEditModal(planId) {
+            isEditing = true;
+            currentEditId = planId;
+            modalHeader.textContent = '编辑交易计划';
+            
+            const plan = tradingPlans.find(p => p.id === planId);
+            if (!plan) return;
+            
+            document.getElementById('stockName').value = plan.stockName;
+            document.getElementById('stockCode').value = plan.stockCode;
+            document.getElementById('currentPrice').value = plan.priceAvailable ? plan.currentPrice : '';
+            document.getElementById('notes').value = plan.notes;
+            document.getElementById('planId').value = planId;
+            
+            signalsContainer.innerHTML = '';
+            signalCount = 0;
+            
+            plan.signals.forEach(signal => {
+                let targetValue = signal.target;
+                if (signal.type === 'time' && typeof targetValue === 'string') {
+                    targetValue = new Date(targetValue).toISOString().slice(0, 16);
+                }
+                addSignalInput(signal.type, targetValue, signal.condition, signal.description, signal.triggered);
+            });
+            
+            planModal.style.display = 'flex';
+        }
+
+        function addSignalInput(type = 'time', target = '', condition = '>', description = '', triggered = false) {
+            signalCount++;
+            const signalDiv = document.createElement('div');
+            signalDiv.className = 'signal-inputs';
+            
+            let typeSpecificFields = '';
+            
+            if (type === 'time') {
+                typeSpecificFields = `
+                    <div class="form-group">
+                        <label>提醒时间</label>
+                        <input type="datetime-local" class="signal-target" value="${target}" required>
+                    </div>
+                `;
+            } else {
+                typeSpecificFields = `
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>条件</label>
+                            <select class="signal-condition" required>
+                                <option value=">" ${condition === '>' ? 'selected' : ''}>大于</option>
+                                <option value="<" ${condition === '<' ? 'selected' : ''}>小于</option>
+                                <option value=">=" ${condition === '>=' ? 'selected' : ''}>大于等于</option>
+                                <option value="<=" ${condition === '<=' ? 'selected' : ''}>小于等于</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>目标价格</label>
+                            <input type="number" step="0.01" class="signal-target" value="${target}" required>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            signalDiv.innerHTML = `
+                <div class="signal-inputs-header">
+                    <h4 style="margin: 0;">计划 #${signalCount}</h4>
+                    <button type="button" class="btn-sell remove-signal-btn" style="padding: 5px 10px; font-size: 12px;">
+                        <i class="fas fa-trash"></i> 删除
+                    </button>
+                </div>
+                <div class="form-group">
+                    <label>计划类型</label>
+                    <select class="signal-type" required>
+                        <option value="time" ${type === 'time' ? 'selected' : ''}>时间提醒</option>
+                        <option value="price" ${type === 'price' ? 'selected' : ''}>价格提醒</option>
+                    </select>
+                </div>
+                ${typeSpecificFields}
+                <div class="form-group">
+                    <label>描述</label>
+                    <input type="text" class="signal-desc" value="${description}" placeholder="例如：提醒卖出、目标价位等" required>
+                </div>
+                ${triggered ? `<input type="hidden" class="signal-triggered" value="true">` : ''}
+            `;
+            
+            signalsContainer.appendChild(signalDiv);
+            
+            // 动态切换类型
+            const typeSelect = signalDiv.querySelector('.signal-type');
+            const container = signalDiv.querySelector('.signal-type').closest('.form-group');
+            
+            typeSelect.addEventListener('change', function() {
+                const currentFields = signalDiv.querySelector('.signal-target').closest('.form-group, .form-row');
+                if (currentFields) {
+                    currentFields.remove();
+                }
+                
+                if (this.value === 'time') {
+                    const timeInput = document.createElement('div');
+                    timeInput.className = 'form-group';
+                    timeInput.innerHTML = `
+                        <label>提醒时间</label>
+                        <input type="datetime-local" class="signal-target" value="" required>
+                    `;
+                    container.after(timeInput);
+                } else {
+                    const priceRow = document.createElement('div');
+                    priceRow.className = 'form-row';
+                    priceRow.innerHTML = `
+                        <div class="form-group">
+                            <label>条件</label>
+                            <select class="signal-condition" required>
+                                <option value=">">大于</option>
+                                <option value="<">小于</option>
+                                <option value=">=">大于等于</option>
+                                <option value="<=">小于等于</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>目标价格</label>
+                            <input type="number" step="0.01" class="signal-target" value="" required>
+                        </div>
+                    `;
+                    container.after(priceRow);
+                }
+            });
+            
+            // 删除按钮
+            const removeBtn = signalDiv.querySelector('.remove-signal-btn');
+            removeBtn.addEventListener('click', () => {
+                signalDiv.remove();
+                const allSignals = signalsContainer.querySelectorAll('.signal-inputs');
+                allSignals.forEach((sig, index) => {
+                    sig.querySelector('h4').textContent = `计划 #${index + 1}`;
+                });
+                signalCount = allSignals.length;
+            });
+        }
+
+        function savePlan() {
+            const stockName = document.getElementById('stockName').value.trim();
+            const stockCode = document.getElementById('stockCode').value.trim();
+            const currentPriceInput = document.getElementById('currentPrice').value.trim();
+            const notes = document.getElementById('notes').value.trim();
+            
+            const signals = [];
+            const signalInputs = signalsContainer.querySelectorAll('.signal-inputs');
+            
+            signalInputs.forEach(input => {
+                const type = input.querySelector('.signal-type').value;
+                const target = input.querySelector('.signal-target').value.trim();
+                const description = input.querySelector('.signal-desc').value.trim();
+                const triggeredInput = input.querySelector('.signal-triggered');
+                const triggered = triggeredInput ? triggeredInput.value === 'true' : false;
+                
+                if (type === 'time') {
+                    if (target && description) {
+                        signals.push({ 
+                            type, 
+                            target, 
+                            description, 
+                            triggered 
+                        });
+                    }
+                } else {
+                    const condition = input.querySelector('.signal-condition').value;
+                    if (target && description) {
+                        signals.push({ 
+                            type, 
+                            target: parseFloat(target), 
+                            condition, 
+                            description, 
+                            triggered 
+                        });
+                    }
+                }
+            });
+            
+            if (!stockName || !stockCode || signals.length === 0) {
+                alert('请填写所有必填字段并至少添加一个有效的交易计划');
+                return;
+            }
+            
+            // 设置初始价格（如果没有输入价格，则设置为0，表示未获取）
+            const initialPrice = currentPriceInput ? parseFloat(currentPriceInput) : 0;
+            const priceAvailable = currentPriceInput ? true : false;
+            
+            if (isEditing) {
+                const planId = parseInt(document.getElementById('planId').value);
+                const planIndex = tradingPlans.findIndex(p => p.id === planId);
+                
+                if (planIndex !== -1) {
+                    tradingPlans[planIndex] = {
+                        ...tradingPlans[planIndex],
+                        stockName,
+                        stockCode,
+                        currentPrice: initialPrice,
+                        priceAvailable: priceAvailable,
+                        signals,
+                        notes,
+                        lastUpdated: new Date()
+                    };
+                }
+            } else {
+                const newPlan = {
+                    id: tradingPlans.length > 0 ? Math.max(...tradingPlans.map(p => p.id)) + 1 : 1,
+                    stockName,
+                    stockCode,
+                    currentPrice: initialPrice,
+                    priceAvailable: priceAvailable,
+                    status: "interested",
+                    signals,
+                    notes,
+                    createdAt: new Date(),
+                    lastUpdated: new Date(),
+                    dataSource: priceAvailable ? 'initial' : 'unavailable',
+                    history: [
+                        {
+                            status: "interested",
+                            time: new Date(),
+                            price: initialPrice,
+                            priceAvailable: priceAvailable,
+                            action: "创建计划",
+                            signals: []
+                        }
+                    ]
+                };
+                
+                tradingPlans.push(newPlan);
+            }
+            
+            savePlansToStorage();
+            renderPlans();
+            closeModal();
+            showNotification(`已${isEditing ? '更新' : '创建'} ${stockName} 的交易计划`);
+        }
+
+        function closeModal() {
+            planModal.style.display = 'none';
+            historyModal.style.display = 'none';
+        }
+
+        // ================ 调试功能 ================
+        function toggleDebug() {
+            debugEnabled = !debugEnabled;
+            document.getElementById('debugPanel').style.display = debugEnabled ? 'block' : 'none';
+            document.getElementById('debugToggle').textContent = debugEnabled ? '隐藏调试' : '调试面板';
+            if (debugEnabled) {
+                updateDebugInfo();
+            }
+        }
+
+        async function testCloudFunction() {
+            const testBtn = document.querySelector('#debugPanel button');
+            const originalText = testBtn.textContent;
+            testBtn.textContent = '测试中...';
+            testBtn.disabled = true;
+            
+            try {
+                const response = await fetch(CLOUD_FUNCTION_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ codes: ['000002'] })
+                });
+                
+                const result = await response.json();
+                
+                if (debugEnabled) {
+                    document.getElementById('debugResponseStatus').textContent = 
+                        `HTTP ${response.status}: ${result.success ? '成功' : '失败'}`;
+                    document.getElementById('debugDataSource').textContent = result.success ? '真实数据' : '无数据';
+                }
+                
+                cloudFunctionStatus = result.success ? '正常' : '失败';
+                cloudFunctionStatusSpan.textContent = cloudFunctionStatus;
+                cloudFunctionStatusSpan.style.color = result.success ? '#4caf50' : '#f44336';
+                
+                showNotification(`云函数测试${result.success ? '成功' : '失败'}: ${result.message}`, !result.success);
+                
+            } catch (error) {
+                console.error('测试失败:', error);
+                if (debugEnabled) {
+                    document.getElementById('debugResponseStatus').textContent = `错误: ${error.message}`;
+                }
+                cloudFunctionStatus = '连接失败';
+                cloudFunctionStatusSpan.textContent = cloudFunctionStatus;
+                cloudFunctionStatusSpan.style.color = '#f44336';
+                showNotification(`云函数连接失败: ${error.message}`, true);
+            } finally {
+                testBtn.textContent = originalText;
+                testBtn.disabled = false;
+                updateDebugInfo();
+            }
+        }
+
+        function clearDebug() {
+            if (debugEnabled) {
+                document.getElementById('debugResponseStatus').textContent = '--';
+                document.getElementById('debugDataSource').textContent = '--';
+            }
+        }
+
+        function updateDebugInfo() {
+            if (!debugEnabled) return;
+            
+            document.getElementById('debugUrl').textContent = CLOUD_FUNCTION_URL;
+            document.getElementById('debugLastRequest').textContent = formatTime(lastUpdateTimestamp) || '从未';
+            document.getElementById('debugCurrentTime').textContent = new Date().toLocaleTimeString();
+            document.getElementById('debugNextUpdate').textContent = nextAutoUpdate ? 
+                `${formatTime(nextAutoUpdate)} (${nextAutoUpdate.toLocaleTimeString()})` : '--';
+            document.getElementById('debugActiveStocks').textContent = getActiveStockCodes().join(', ') || '无';
+            document.getElementById('debugDataSource').textContent = dataSource.textContent;
+        }
+
+        // ================ 事件监听器初始化 ================
+        document.getElementById('addPlanBtn').addEventListener('click', openAddModal);
+        document.getElementById('addSignalBtn').addEventListener('click', () => addSignalInput());
+        document.getElementById('savePlanBtn').addEventListener('click', savePlan);
+        document.getElementById('cancelBtn').addEventListener('click', closeModal);
+        document.getElementById('closeHistoryBtn').addEventListener('click', closeModal);
+        document.getElementById('debugToggle').addEventListener('click', toggleDebug);
+        updatePricesBtn.addEventListener('click', updateRealStockPrices);
+        refreshBtn.addEventListener('click', () => {
+            renderPlans();
+            showNotification('页面已刷新');
+        });
+        testConnectionBtn.addEventListener('click', testCloudFunction);
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentFilter = tab.getAttribute('data-filter');
+                renderPlans();
+            });
+        });
+        
+        window.addEventListener('click', (e) => {
+            if (e.target === planModal || e.target === historyModal) {
+                closeModal();
+            }
+        });
+
+        // 键盘快捷键
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'n') {
+                e.preventDefault();
+                openAddModal();
+            } else if (e.key === 'Escape') {
+                closeModal();
+            } else if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                updateRealStockPrices();
+            } else if (e.ctrlKey && e.key === 'd') {
+                e.preventDefault();
+                toggleDebug();
+            }
+        });
+
+        // 页面加载时初始化
+        window.addEventListener('load', function() {
+            loadPlansFromStorage();
+            setupAutoUpdateTimer();
+            renderPlans();
+            
+            // 每10秒检查一次时间信号
+            setInterval(checkTimeSignals, 10000);
+            
+            // 每30秒更新一次显示时间
+            setInterval(updateLastUpdateTime, 30000);
+            
+            // 每60秒更新一次调试信息
+            setInterval(updateDebugInfo, 60000);
+            
+            showNotification('交易计划工具已加载完成！快捷键: Ctrl+N创建计划, Ctrl+R更新股价, Ctrl+D调试面板');
+            
+            // 自动测试云函数连接
+            setTimeout(testCloudFunction, 1000);
+        });
+
+        // 页面可见性变化时更新
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                updateLastUpdateTime();
+                checkTimeSignals();
+                updateDebugInfo();
+            }
+        });
+
+    </script>
+</body>
+</html>
