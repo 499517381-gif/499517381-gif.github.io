@@ -3,7 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>交易计划提醒工具 - 智能版</title>
+        <!-- 在现有的viewport meta标签下面添加这些 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="交易助手">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1a6dff">
+    <meta name="format-detection" content="telephone=no">
+
+    <!-- 添加到主屏幕的图标（需要准备图标文件） -->
+    <link rel="apple-touch-icon" sizes="180x180" href="icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192x192.png">
+    <link rel="manifest" href="manifest.json">
+    <!-- 修改viewport属性 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+    <title>jy计划</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; }
@@ -174,6 +189,92 @@
                 font-size: 11px;
             }
         }
+                /* ============ 针对PWA全屏模式的优化 ============ */
+        /* iOS安全区域适配 */
+        @supports (-webkit-touch-callout: none) {
+          body {
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+          }
+        }
+
+        /* 防止iOS工具栏显示 */
+        body {
+          /* 禁用长按菜单 */
+          -webkit-user-select: none;
+          -webkit-touch-callout: none;
+
+          /* 禁用双击缩放 */
+          touch-action: manipulation;
+
+          /* 防止滚动时露出底部地址栏 */
+          position: fixed;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+        }
+
+        /* 优化滚动体验 */
+        .container {
+          height: 100vh;
+          height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+          padding: 20px;
+          padding-bottom: calc(20px + env(safe-area-inset-bottom));
+        }
+
+        /* 隐藏滚动条但保留功能 */
+        .container::-webkit-scrollbar {
+          display: none;
+        }
+
+        /* 优化按钮点击反馈 */
+        .btn-primary:active,
+        .btn-success:active,
+        .btn-secondary:active,
+        .btn-execute:active,
+        .btn-sell:active,
+        .btn-history:active {
+          transform: scale(0.95);
+          opacity: 0.8;
+        }
+
+        /* 去除iOS默认高亮 */
+        * {
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 修复模态框在PWA中的显示 */
+        .modal {
+          padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+          align-items: flex-start;
+          padding-top: max(20px, env(safe-area-inset-top));
+        }
+
+        .modal-content {
+          margin-top: max(20px, env(safe-area-inset-top));
+          max-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 40px);
+        }
+
+        /* 调试面板适配安全区域 */
+        .debug-panel {
+          bottom: calc(10px + env(safe-area-inset-bottom));
+        }
+
+        .debug-toggle {
+          bottom: calc(10px + env(safe-area-inset-bottom));
+        }
+
+        /* 交易卡片在PWA中的优化 */
+        .plan-card {
+          /* 确保卡片在iOS上正确显示 */
+          -webkit-backface-visibility: hidden;
+          backface-visibility: hidden;
+          transform: translateZ(0);
+        }
     </style>
 </head>
 <body>
@@ -339,6 +440,141 @@
     </div>
 
     <script>
+        // ============ PWA功能增强 ============
+        // 注册Service Worker（创建sw.js文件）
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').then(() => {
+              console.log('Service Worker 注册成功');
+            }).catch(err => {
+              console.log('Service Worker 注册失败:', err);
+            });
+          });
+        }
+
+        // 检测是否在PWA全屏模式中
+        function isInPWA() {
+          return window.matchMedia('(display-mode: standalone)').matches ||
+                 window.navigator.standalone === true;
+        }
+
+        // 添加到主屏幕的引导
+        function showAddToHomeScreenGuide() {
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+          const alreadyPrompted = localStorage.getItem('addToHomeScreenPrompted');
+
+          // 如果是iOS Safari且不在PWA模式，显示引导
+          if (isIOS && isSafari && !isInPWA() && !alreadyPrompted) {
+            // 延迟显示，等页面完全加载
+            setTimeout(() => {
+              const guideHTML = `
+                <div id="addToHomeScreenGuide" style="
+                  position: fixed;
+                  bottom: 0;
+                  left: 0;
+                  right: 0;
+                  background: linear-gradient(135deg, #1a6dff 0%, #0d4dc2 100%);
+                  color: white;
+                  padding: 15px 20px;
+                  z-index: 9999;
+                  box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                ">
+                  <div style="flex: 1;">
+                    <div style="font-weight: 600; margin-bottom: 5px;">添加到主屏幕</div>
+                    <div style="font-size: 13px; opacity: 0.9;">获得更好的应用体验，像原生APP一样使用</div>
+                  </div>
+                  <div style="display: flex; gap: 10px;">
+                    <button onclick="dismissAddToHomeScreenGuide()" style="
+                      padding: 8px 15px;
+                      background: transparent;
+                      border: 1px solid white;
+                      color: white;
+                      border-radius: 6px;
+                      font-size: 14px;
+                    ">稍后</button>
+                    <button onclick="showAddToHomeScreenInstructions()" style="
+                      padding: 8px 15px;
+                      background: white;
+                      color: #1a6dff;
+                      border: none;
+                      border-radius: 6px;
+                      font-size: 14px;
+                      font-weight: 600;
+                    ">添加</button>
+                  </div>
+                </div>
+              `;
+
+              const guideDiv = document.createElement('div');
+              guideDiv.innerHTML = guideHTML;
+              document.body.appendChild(guideDiv);
+
+              // 调整容器底部边距，避免被引导遮挡
+              document.querySelector('.container').style.paddingBottom =
+                `calc(20px + env(safe-area-inset-bottom) + 90px)`;
+            }, 3000);
+          }
+        }
+
+        function dismissAddToHomeScreenGuide() {
+          const guide = document.getElementById('addToHomeScreenGuide');
+          if (guide) {
+            guide.remove();
+            document.querySelector('.container').style.paddingBottom =
+              `calc(20px + env(safe-area-inset-bottom))`;
+          }
+          localStorage.setItem('addToHomeScreenPrompted', 'true');
+        }
+
+        function showAddToHomeScreenInstructions() {
+          dismissAddToHomeScreenGuide();
+
+          // 显示如何添加的说明
+          const instructions = `
+            <div style="text-align: left; padding: 10px;">
+              <p style="font-weight: 600; margin-bottom: 15px;">如何添加到主屏幕：</p>
+              <ol style="margin: 0; padding-left: 20px;">
+                <li style="margin-bottom: 8px;">点击Safari底部的分享按钮</li>
+                <li style="margin-bottom: 8px;">向上滑动找到"添加到主屏幕"</li>
+                <li style="margin-bottom: 8px;">点击"添加"，完成！</li>
+              </ol>
+              <div style="margin-top: 15px; padding: 10px; background: #f0f7ff; border-radius: 8px; font-size: 12px;">
+                <i class="fas fa-info-circle"></i> 添加到主屏幕后，应用将全屏运行，无需浏览器界面
+              </div>
+            </div>
+          `;
+
+          showNotification(instructions, false, true);
+          localStorage.setItem('addToHomeScreenPrompted', 'true');
+        }
+
+        // 修改showNotification函数以支持更长的通知
+        // 在原showNotification函数中添加对长文本的支持
+        function showNotification(message, isError = false, isWarning = false) {
+          const notification = document.createElement('div');
+          notification.className = `notification ${isError ? 'error' : isWarning ? 'warning' : ''}`;
+          notification.innerHTML = `
+            <div style="display: flex; align-items: flex-start;">
+              <i class="fas fa-${isError ? 'exclamation-circle' : isWarning ? 'exclamation-triangle' : 'check-circle'}"
+                 style="margin-right: 10px; margin-top: 2px; flex-shrink: 0;"></i>
+              <div style="flex: 1; min-width: 0;">${message}</div>
+            </div>
+          `;
+          document.body.appendChild(notification);
+
+          setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+              if (notification.parentNode) {
+                document.body.removeChild(notification);
+              }
+            }, 300);
+          }, isWarning ? 8000 : 3000); // 警告通知显示更长时间
+        }
         // ================ 配置部分 ================
         // 请替换为您自己的云函数URL
         const CLOUD_FUNCTION_URL = 'https://1400356775-kmdwvqalgd.ap-guangzhou.tencentscf.com';
@@ -1600,6 +1836,20 @@
 
         // 页面加载时初始化
         window.addEventListener('load', function() {
+          // 显示PWA引导（只在第一次访问时）
+          showAddToHomeScreenGuide();
+
+          // 如果在PWA模式中，调整一些UI
+          if (isInPWA()) {
+            console.log('正在PWA全屏模式中运行');
+            // 可以在这里添加PWA特有的UI调整
+            document.body.style.padding = '0';
+          }
+
+          // 现有的初始化代码...
+          loadPlansFromStorage();
+          setupAutoUpdateTimer();
+          renderPlans();
             loadPlansFromStorage();
             setupAutoUpdateTimer();
             renderPlans();
